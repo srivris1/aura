@@ -20,5 +20,5 @@ export default function Component() {
 Focus on returning functional, beautiful Tailwind CSS components. Keep explanations concise.`,
   });
 
-  return result.toDataStreamResponse();
+  return result.toTextStreamResponse();
 }

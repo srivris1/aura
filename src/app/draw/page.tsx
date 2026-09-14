@@ -119,14 +119,14 @@ export default function DrawPage() {
         
         <button 
           onClick={() => setTool('pen')}
-          className={\`p-3 rounded-xl transition-colors \${tool === 'pen' ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-white/10 text-zinc-400'}\`}
+          className={`p-3 rounded-xl transition-colors \${tool === 'pen' ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-white/10 text-zinc-400'}`}
         >
           <Pen className="w-5 h-5" />
         </button>
         
         <button 
           onClick={() => setTool('eraser')}
-          className={\`p-3 rounded-xl transition-colors \${tool === 'eraser' ? 'bg-zinc-700 text-white' : 'hover:bg-white/10 text-zinc-400'}\`}
+          className={`p-3 rounded-xl transition-colors \${tool === 'eraser' ? 'bg-zinc-700 text-white' : 'hover:bg-white/10 text-zinc-400'}`}
         >
           <Eraser className="w-5 h-5" />
         </button>

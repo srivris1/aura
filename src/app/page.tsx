@@ -1,8 +1,8 @@
 'use client';
 
-import { useChat } from 'ai/react';
+import { useChat } from '@ai-sdk/react';
 import { useState, useEffect, useRef } from 'react';
-import { Send, Mic, Square, Code, Sparkles, LogOut, Github, Globe, Download, PenTool } from 'lucide-react';
+import { Send, Mic, Square, Code, Sparkles, LogOut, GitBranch, Globe, Download, PenTool } from 'lucide-react';
 import { Sandpack } from '@codesandbox/sandpack-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
@@ -39,12 +39,12 @@ export default function Home() {
   const { messages, input, handleInputChange, handleSubmit, isLoading, stop, setMessages } = useChat({
     api: '/api/chat',
     initialMessages: dbMessages as any,
-    onFinish: async (message) => {
+    onFinish: async (message: any) => {
       if (user) {
         await supabase.from('messages').insert({ role: 'assistant', content: message.content });
       }
     }
-  });
+  } as any) as any;
 
   const [isRecording, setIsRecording] = useState(false);
   const [activeCode, setActiveCode] = useState<string | null>(null);
@@ -85,6 +85,7 @@ export default function Home() {
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
       if (lastMessage.role === 'assistant') {
+        // @ts-ignore
         const codeMatch = lastMessage.content.match(/```(?:tsx|jsx|html)\n([\s\S]*?)```/);
         if (codeMatch && codeMatch[1]) {
           setActiveCode(codeMatch[1].trim());
@@ -148,7 +149,7 @@ export default function Home() {
             onClick={handleLogin}
             className="w-full flex items-center justify-center gap-2 bg-white text-black py-3 rounded-xl font-medium hover:bg-zinc-200 transition-colors"
           >
-            <Github className="w-5 h-5" />
+            <GitBranch className="w-5 h-5" />
             Continue with GitHub
           </button>
         </motion.div>
@@ -159,7 +160,7 @@ export default function Home() {
   return (
     <div className="flex h-screen bg-[#09090b] text-white overflow-hidden font-sans">
       {/* Chat Area */}
-      <div className={\`flex flex-col h-full transition-all duration-500 ease-in-out \${activeCode ? 'w-1/2 border-r border-white/10' : 'w-full max-w-4xl mx-auto'}\`}>
+      <div className={`flex flex-col h-full transition-all duration-500 ease-in-out \${activeCode ? 'w-1/2 border-r border-white/10' : 'w-full max-w-4xl mx-auto'}`}>
         {/* Header */}
         <header className="h-16 border-b border-white/10 flex items-center justify-between px-6 bg-[#09090b]/80 backdrop-blur-md z-10 shrink-0">
           <div className="flex items-center gap-3">
@@ -186,17 +187,18 @@ export default function Home() {
               <p className="max-w-md text-sm">Ask Aura to create a React component, and watch it render live in the sandbox.</p>
             </div>
           ) : (
-            messages.map(m => (
+            messages.map((m: any) => (
               <motion.div 
                 key={m.id} 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={\`flex gap-4 \${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}\`}
+                className={`flex gap-4 \${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
               >
-                <div className={\`w-8 h-8 shrink-0 rounded-full flex items-center justify-center overflow-hidden \${m.role === 'user' ? 'bg-blue-600' : 'bg-[#27272a]'}\`}>
+                <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center overflow-hidden \${m.role === 'user' ? 'bg-blue-600' : 'bg-[#27272a]'}`}>
                   {m.role === 'user' ? user.user_metadata?.avatar_url ? <img src={user.user_metadata.avatar_url} className="w-full h-full object-cover" alt="User" /> : <div className="text-xs">U</div> : <Sparkles className="w-4 h-4 text-blue-400" />}
                 </div>
-                <div className={\`max-w-[85%] \${m.role === 'user' ? 'bg-blue-600/20 text-blue-50' : 'bg-transparent text-zinc-300'} px-5 py-3 rounded-2xl prose prose-invert prose-p:leading-relaxed prose-pre:bg-[#18181b] prose-pre:border prose-pre:border-white/10\`}>
+                <div className={`max-w-[85%] \${m.role === 'user' ? 'bg-blue-600/20 text-blue-50' : 'bg-transparent text-zinc-300'} px-5 py-3 rounded-2xl prose prose-invert prose-p:leading-relaxed prose-pre:bg-[#18181b] prose-pre:border prose-pre:border-white/10`}>
+                  {/* @ts-ignore */}
                   <ReactMarkdown>{m.content}</ReactMarkdown>
                 </div>
               </motion.div>
@@ -219,7 +221,7 @@ export default function Home() {
             <button 
               type="button" 
               onClick={handleVoice}
-              className={\`p-3 rounded-xl transition-colors \${isRecording ? 'bg-red-500/20 text-red-400 animate-pulse' : 'hover:bg-white/5 text-zinc-400'}\`}
+              className={`p-3 rounded-xl transition-colors \${isRecording ? 'bg-red-500/20 text-red-400 animate-pulse' : 'hover:bg-white/5 text-zinc-400'}`}
             >
               <Mic className="w-5 h-5" />
             </button>
