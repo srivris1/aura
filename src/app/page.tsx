@@ -2,29 +2,60 @@
 
 import { useChat } from 'ai/react';
 import { useState, useEffect, useRef } from 'react';
-import { Send, Mic, Square, Code, Sparkles, LogOut, Github, Globe } from 'lucide-react';
+import { Send, Mic, Square, Code, Sparkles, LogOut, Github, Globe, Download, PenTool } from 'lucide-react';
 import { Sandpack } from '@codesandbox/sandpack-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/lib/supabase';
+import Link from 'next/link';
 
 export default function Home() {
-  const { messages, input, handleInputChange, handleSubmit, isLoading, stop } = useChat();
-  const [isRecording, setIsRecording] = useState(false);
-  const [activeCode, setActiveCode] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [dbMessages, setDbMessages] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
 
-  // Authentication check
+  // Authentication & History Load
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
-    });
+      if (session?.user) {
+        const { data } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
+        if (data) {
+          setDbMessages(data.map(m => ({ id: m.id, role: m.role, content: m.content })));
+        }
+      }
+      setIsLoadingHistory(false);
+    };
+    init();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (!session?.user) setDbMessages([]);
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  const { messages, input, handleInputChange, handleSubmit, isLoading, stop, setMessages } = useChat({
+    api: '/api/chat',
+    initialMessages: dbMessages as any,
+    onFinish: async (message) => {
+      if (user) {
+        await supabase.from('messages').insert({ role: 'assistant', content: message.content });
+      }
+    }
+  });
+
+  const [isRecording, setIsRecording] = useState(false);
+  const [activeCode, setActiveCode] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Sync DB messages with chat if they load late
+  useEffect(() => {
+    if (dbMessages.length > 0 && messages.length === 0) {
+      setMessages(dbMessages as any);
+    }
+  }, [dbMessages, messages.length, setMessages]);
 
   const handleLogin = async () => {
     await supabase.auth.signInWithOAuth({ provider: 'github' });
@@ -32,6 +63,16 @@ export default function Home() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+  };
+
+  const mySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+    if (user) {
+      // Optimistically save user message
+      await supabase.from('messages').insert({ role: 'user', content: input });
+    }
+    handleSubmit(e);
   };
 
   // Scroll to bottom
@@ -75,6 +116,21 @@ export default function Home() {
     }
   };
 
+  const downloadCode = () => {
+    if (!activeCode) return;
+    const blob = new Blob([activeCode], { type: 'text/typescript' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Component.tsx';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (isLoadingHistory) {
+    return <div className="h-screen flex items-center justify-center bg-[#09090b]"><div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen bg-[#09090b] flex items-center justify-center p-4">
@@ -105,14 +161,20 @@ export default function Home() {
       {/* Chat Area */}
       <div className={\`flex flex-col h-full transition-all duration-500 ease-in-out \${activeCode ? 'w-1/2 border-r border-white/10' : 'w-full max-w-4xl mx-auto'}\`}>
         {/* Header */}
-        <header className="h-16 border-b border-white/10 flex items-center justify-between px-6 bg-[#09090b]/80 backdrop-blur-md z-10">
+        <header className="h-16 border-b border-white/10 flex items-center justify-between px-6 bg-[#09090b]/80 backdrop-blur-md z-10 shrink-0">
           <div className="flex items-center gap-3">
             <Sparkles className="w-5 h-5 text-blue-400" />
             <h1 className="font-semibold text-lg tracking-tight">Aura AI</h1>
           </div>
-          <button onClick={handleLogout} className="p-2 hover:bg-white/5 rounded-lg text-zinc-400 transition-colors">
-            <LogOut className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-4">
+            <Link href="/draw" className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 text-blue-400 rounded-lg text-sm hover:bg-blue-500/20 transition-colors font-medium border border-blue-500/20">
+              <PenTool className="w-4 h-4" />
+              Whiteboard
+            </Link>
+            <button onClick={handleLogout} className="p-2 hover:bg-white/5 rounded-lg text-zinc-400 transition-colors">
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
         </header>
 
         {/* Messages */}
@@ -131,8 +193,8 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 className={\`flex gap-4 \${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}\`}
               >
-                <div className={\`w-8 h-8 shrink-0 rounded-full flex items-center justify-center \${m.role === 'user' ? 'bg-blue-600' : 'bg-[#27272a]'}\`}>
-                  {m.role === 'user' ? user.user_metadata?.avatar_url ? <img src={user.user_metadata.avatar_url} className="rounded-full w-full h-full" alt="User" /> : <div className="text-xs">U</div> : <Sparkles className="w-4 h-4 text-blue-400" />}
+                <div className={\`w-8 h-8 shrink-0 rounded-full flex items-center justify-center overflow-hidden \${m.role === 'user' ? 'bg-blue-600' : 'bg-[#27272a]'}\`}>
+                  {m.role === 'user' ? user.user_metadata?.avatar_url ? <img src={user.user_metadata.avatar_url} className="w-full h-full object-cover" alt="User" /> : <div className="text-xs">U</div> : <Sparkles className="w-4 h-4 text-blue-400" />}
                 </div>
                 <div className={\`max-w-[85%] \${m.role === 'user' ? 'bg-blue-600/20 text-blue-50' : 'bg-transparent text-zinc-300'} px-5 py-3 rounded-2xl prose prose-invert prose-p:leading-relaxed prose-pre:bg-[#18181b] prose-pre:border prose-pre:border-white/10\`}>
                   <ReactMarkdown>{m.content}</ReactMarkdown>
@@ -145,6 +207,7 @@ export default function Home() {
               <div className="w-8 h-8 rounded-full bg-[#27272a] flex items-center justify-center">
                 <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
               </div>
+              <div className="px-5 py-3 rounded-2xl bg-transparent text-zinc-500 animate-pulse">Aura is thinking...</div>
             </div>
           )}
           <div ref={messagesEndRef} />
@@ -152,7 +215,7 @@ export default function Home() {
 
         {/* Input Area */}
         <div className="p-4 bg-gradient-to-t from-[#09090b] to-transparent">
-          <form onSubmit={handleSubmit} className="relative max-w-3xl mx-auto flex items-end gap-2 bg-[#18181b] p-2 rounded-2xl border border-white/10 shadow-2xl focus-within:border-white/20 transition-all">
+          <form onSubmit={mySubmit} className="relative max-w-3xl mx-auto flex items-end gap-2 bg-[#18181b] p-2 rounded-2xl border border-white/10 shadow-2xl focus-within:border-white/20 transition-all">
             <button 
               type="button" 
               onClick={handleVoice}
@@ -169,7 +232,7 @@ export default function Home() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  handleSubmit(e as any);
+                  mySubmit(e);
                 }
               }}
             />
@@ -195,12 +258,18 @@ export default function Home() {
             exit={{ width: 0, opacity: 0 }}
             className="h-full bg-[#1e1e1e] flex flex-col"
           >
-            <div className="h-12 border-b border-white/10 flex items-center justify-between px-4 bg-[#18181b]">
+            <div className="h-16 shrink-0 border-b border-white/10 flex items-center justify-between px-6 bg-[#18181b]">
               <div className="flex items-center gap-2 text-zinc-400">
                 <Code className="w-4 h-4" />
-                <span className="text-sm font-medium">Live Preview</span>
+                <span className="text-sm font-medium text-zinc-300">Live Preview</span>
               </div>
-              <button onClick={() => setActiveCode(null)} className="text-xs text-zinc-500 hover:text-white transition-colors">Close</button>
+              <div className="flex items-center gap-3">
+                <button onClick={downloadCode} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-medium text-zinc-300 transition-colors">
+                  <Download className="w-3.5 h-3.5" />
+                  Download
+                </button>
+                <button onClick={() => setActiveCode(null)} className="text-xs text-zinc-500 hover:text-white transition-colors">Close</button>
+              </div>
             </div>
             <div className="flex-1 w-full overflow-hidden">
               <Sandpack
