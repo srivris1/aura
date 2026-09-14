@@ -58,6 +58,12 @@ export default function Home() {
   }, [dbMessages, messages.length, setMessages]);
 
   const handleLogin = async () => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'placeholder';
+    if (supabaseUrl.includes('placeholder')) {
+      setUser({ id: 'guest', user_metadata: { avatar_url: '' } } as any);
+      setDbMessages([]);
+      return;
+    }
     try {
       const { error } = await supabase.auth.signInWithOAuth({ provider: 'github' });
       if (error) throw error;
