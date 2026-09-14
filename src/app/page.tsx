@@ -40,8 +40,8 @@ export default function Home() {
     api: '/api/chat',
     initialMessages: dbMessages as any,
     onFinish: async (message: any) => {
-      if (user) {
-        await supabase.from('messages').insert({ role: 'assistant', content: message.content });
+      if (user && user.id !== 'guest') {
+        try { await supabase.from('messages').insert({ role: 'assistant', content: message.content }); } catch (e) {}
       }
     }
   } as any) as any;
@@ -58,7 +58,13 @@ export default function Home() {
   }, [dbMessages, messages.length, setMessages]);
 
   const handleLogin = async () => {
-    await supabase.auth.signInWithOAuth({ provider: 'github' });
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({ provider: 'github' });
+      if (error) throw error;
+    } catch (e) {
+      setUser({ id: 'guest', user_metadata: { avatar_url: '' } } as any);
+      setDbMessages([]);
+    }
   };
 
   const handleLogout = async () => {
@@ -68,9 +74,8 @@ export default function Home() {
   const mySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
-    if (user) {
-      
-      await supabase.from('messages').insert({ role: 'user', content: input });
+    if (user && user.id !== 'guest') {
+      try { await supabase.from('messages').insert({ role: 'user', content: input }); } catch (e) {}
     }
     handleSubmit(e);
   };
