@@ -14,7 +14,7 @@ export default function Home() {
   const [user, setUser] = useState<any>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
 
-  // Authentication & History Load
+  
   useEffect(() => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -50,7 +50,7 @@ export default function Home() {
   const [activeCode, setActiveCode] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Sync DB messages with chat if they load late
+  
   useEffect(() => {
     if (dbMessages.length > 0 && messages.length === 0) {
       setMessages(dbMessages as any);
@@ -69,23 +69,23 @@ export default function Home() {
     e.preventDefault();
     if (!input.trim()) return;
     if (user) {
-      // Optimistically save user message
+      
       await supabase.from('messages').insert({ role: 'user', content: input });
     }
     handleSubmit(e);
   };
 
-  // Scroll to bottom
+  
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Extract code from messages
+  
   useEffect(() => {
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
       if (lastMessage.role === 'assistant') {
-        // @ts-ignore
+        
         const codeMatch = lastMessage.content.match(/```(?:tsx|jsx|html)\n([\s\S]*?)```/);
         if (codeMatch && codeMatch[1]) {
           setActiveCode(codeMatch[1].trim());
@@ -159,9 +159,9 @@ export default function Home() {
 
   return (
     <div className="flex h-screen bg-[#09090b] text-white overflow-hidden font-sans">
-      {/* Chat Area */}
+      
       <div className={`flex flex-col h-full transition-all duration-500 ease-in-out \${activeCode ? 'w-1/2 border-r border-white/10' : 'w-full max-w-4xl mx-auto'}`}>
-        {/* Header */}
+        
         <header className="h-16 border-b border-white/10 flex items-center justify-between px-6 bg-[#09090b]/80 backdrop-blur-md z-10 shrink-0">
           <div className="flex items-center gap-3">
             <Sparkles className="w-5 h-5 text-blue-400" />
@@ -178,7 +178,7 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Messages */}
+        
         <div className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth">
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-50">
@@ -198,7 +198,7 @@ export default function Home() {
                   {m.role === 'user' ? user.user_metadata?.avatar_url ? <img src={user.user_metadata.avatar_url} className="w-full h-full object-cover" alt="User" /> : <div className="text-xs">U</div> : <Sparkles className="w-4 h-4 text-blue-400" />}
                 </div>
                 <div className={`max-w-[85%] \${m.role === 'user' ? 'bg-blue-600/20 text-blue-50' : 'bg-transparent text-zinc-300'} px-5 py-3 rounded-2xl prose prose-invert prose-p:leading-relaxed prose-pre:bg-[#18181b] prose-pre:border prose-pre:border-white/10`}>
-                  {/* @ts-ignore */}
+                  
                   <ReactMarkdown>{m.content}</ReactMarkdown>
                 </div>
               </motion.div>
@@ -215,7 +215,7 @@ export default function Home() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
+        
         <div className="p-4 bg-gradient-to-t from-[#09090b] to-transparent">
           <form onSubmit={mySubmit} className="relative max-w-3xl mx-auto flex items-end gap-2 bg-[#18181b] p-2 rounded-2xl border border-white/10 shadow-2xl focus-within:border-white/20 transition-all">
             <button 
@@ -251,7 +251,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Live Sandbox Area */}
+      
       <AnimatePresence>
         {activeCode && (
           <motion.div 
