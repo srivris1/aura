@@ -14,29 +14,33 @@ export default function Home() {
   const [user, setUser] = useState<any>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
 
-  
   useEffect(() => {
     const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        const { data } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
-        if (data) {
-          setDbMessages(data.map(m => ({ id: m.id, role: m.role, content: m.content })));
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          setUser(session.user);
+          const { data } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
+          if (data) {
+            setDbMessages(data.map(m => ({ id: m.id, role: m.role, content: m.content })));
+          }
         }
-      }
+      } catch (e) {}
       setIsLoadingHistory(false);
     };
     init();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (!session?.user) setDbMessages([]);
-    });
-    return () => subscription.unsubscribe();
+    try {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session?.user) {
+          setUser(session.user);
+        }
+      });
+      return () => subscription.unsubscribe();
+    } catch (e) {}
   }, []);
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading, stop, setMessages } = useChat({
+  const { messages = [], input = '', handleInputChange, handleSubmit, isLoading, stop, setMessages } = useChat({
     api: '/api/chat',
     initialMessages: dbMessages as any,
     onFinish: async (message: any) => {
@@ -46,11 +50,11 @@ export default function Home() {
     }
   } as any) as any;
 
+  const chatInput = input ?? '';
   const [isRecording, setIsRecording] = useState(false);
   const [activeCode, setActiveCode] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  
   useEffect(() => {
     if (dbMessages.length > 0 && messages.length === 0) {
       setMessages(dbMessages as any);
@@ -58,9 +62,9 @@ export default function Home() {
   }, [dbMessages, messages.length, setMessages]);
 
   const handleLogin = async () => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'placeholder';
-    if (supabaseUrl.includes('placeholder')) {
-      setUser({ id: 'guest', user_metadata: { avatar_url: '' } } as any);
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!supabaseUrl || supabaseUrl.includes('placeholder') || supabaseUrl.includes('example')) {
+      setUser({ id: 'guest', user_metadata: { avatar_url: '' } });
       setDbMessages([]);
       return;
     }
@@ -68,35 +72,36 @@ export default function Home() {
       const { error } = await supabase.auth.signInWithOAuth({ provider: 'github' });
       if (error) throw error;
     } catch (e) {
-      setUser({ id: 'guest', user_metadata: { avatar_url: '' } } as any);
+      setUser({ id: 'guest', user_metadata: { avatar_url: '' } });
       setDbMessages([]);
     }
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {}
+    setUser(null);
+    setDbMessages([]);
   };
 
   const mySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!chatInput.trim()) return;
     if (user && user.id !== 'guest') {
-      try { await supabase.from('messages').insert({ role: 'user', content: input }); } catch (e) {}
+      try { await supabase.from('messages').insert({ role: 'user', content: chatInput }); } catch (e) {}
     }
     handleSubmit(e);
   };
 
-  
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  
   useEffect(() => {
-    if (messages.length > 0) {
+    if (messages && messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
-      if (lastMessage.role === 'assistant') {
-        
+      if (lastMessage && lastMessage.role === 'assistant' && lastMessage.content) {
         const codeMatch = lastMessage.content.match(/```(?:tsx|jsx|html)\n([\s\S]*?)```/);
         if (codeMatch && codeMatch[1]) {
           setActiveCode(codeMatch[1].trim());
@@ -115,7 +120,7 @@ export default function Home() {
       
       recognition.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
-        handleInputChange({ target: { value: input + ' ' + transcript } } as any);
+        handleInputChange({ target: { value: (chatInput ? chatInput + ' ' : '') + transcript } } as any);
         setIsRecording(false);
       };
 
@@ -156,13 +161,22 @@ export default function Home() {
           </div>
           <h1 className="text-3xl font-bold text-white tracking-tight">Welcome to Aura</h1>
           <p className="text-zinc-400">Your AI programming assistant with Live Sandboxing.</p>
-          <button 
-            onClick={handleLogin}
-            className="w-full flex items-center justify-center gap-2 bg-white text-black py-3 rounded-xl font-medium hover:bg-zinc-200 transition-colors"
-          >
-            <GitBranch className="w-5 h-5" />
-            Continue with GitHub
-          </button>
+          <div className="flex flex-col gap-3 pt-2">
+            <button 
+              onClick={handleLogin}
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white py-3.5 rounded-xl font-medium shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
+            >
+              <Sparkles className="w-5 h-5" />
+              Launch Aura (Instant Access)
+            </button>
+            <button 
+              onClick={handleLogin}
+              className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 text-white py-3 rounded-xl font-medium border border-white/10 transition-colors cursor-pointer"
+            >
+              <GitBranch className="w-5 h-5" />
+              Continue with GitHub
+            </button>
+          </div>
         </motion.div>
       </div>
     );
@@ -170,32 +184,47 @@ export default function Home() {
 
   return (
     <div className="flex h-screen bg-[#09090b] text-white overflow-hidden font-sans">
-      
-      <div className={`flex flex-col h-full transition-all duration-500 ease-in-out \${activeCode ? 'w-1/2 border-r border-white/10' : 'w-full max-w-4xl mx-auto'}`}>
-        
+      <div className={`flex flex-col h-full transition-all duration-500 ease-in-out ${activeCode ? 'w-1/2 border-r border-white/10' : 'w-full max-w-4xl mx-auto'}`}>
         <header className="h-16 border-b border-white/10 flex items-center justify-between px-6 bg-[#09090b]/80 backdrop-blur-md z-10 shrink-0">
           <div className="flex items-center gap-3">
             <Sparkles className="w-5 h-5 text-blue-400" />
             <h1 className="font-semibold text-lg tracking-tight">Aura AI</h1>
+            <span className="text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full font-mono">Workspace</span>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/draw" className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 text-blue-400 rounded-lg text-sm hover:bg-blue-500/20 transition-colors font-medium border border-blue-500/20">
+            <Link href="https://codenex-draw.vercel.app" target="_blank" className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 text-blue-400 rounded-lg text-sm hover:bg-blue-500/20 transition-colors font-medium border border-blue-500/20">
               <PenTool className="w-4 h-4" />
-              Whiteboard
+              CyberDraw Live
             </Link>
-            <button onClick={handleLogout} className="p-2 hover:bg-white/5 rounded-lg text-zinc-400 transition-colors">
+            <button onClick={handleLogout} className="p-2 hover:bg-white/5 rounded-lg text-zinc-400 transition-colors cursor-pointer" title="Sign Out">
               <LogOut className="w-4 h-4" />
             </button>
           </div>
         </header>
 
-        
         <div className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth">
-          {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-50">
-              <Globe className="w-12 h-12 text-blue-400/50" />
+          {(!messages || messages.length === 0) ? (
+            <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-75">
+              <Globe className="w-12 h-12 text-blue-400/70" />
               <h2 className="text-xl font-medium">What shall we build today?</h2>
-              <p className="max-w-md text-sm">Ask Aura to create a React component, and watch it render live in the sandbox.</p>
+              <p className="max-w-md text-sm text-zinc-400">Ask Aura to create a React component, and watch it render live in the interactive sandbox.</p>
+              <div className="flex flex-wrap gap-2 justify-center max-w-lg pt-4">
+                {[
+                  "Build an interactive crypto analytics card",
+                  "Create an animated music player widget",
+                  "Design a sleek glassmorphic pricing table"
+                ].map((suggestion, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      handleInputChange({ target: { value: suggestion } } as any);
+                    }}
+                    className="text-xs bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 px-3 py-1.5 rounded-full transition-colors cursor-pointer"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
             </div>
           ) : (
             messages.map((m: any) => (
@@ -203,13 +232,12 @@ export default function Home() {
                 key={m.id} 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`flex gap-4 \${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+                className={`flex gap-4 ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
               >
-                <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center overflow-hidden \${m.role === 'user' ? 'bg-blue-600' : 'bg-[#27272a]'}`}>
-                  {m.role === 'user' ? user.user_metadata?.avatar_url ? <img src={user.user_metadata.avatar_url} className="w-full h-full object-cover" alt="User" /> : <div className="text-xs">U</div> : <Sparkles className="w-4 h-4 text-blue-400" />}
+                <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center overflow-hidden ${m.role === 'user' ? 'bg-blue-600' : 'bg-[#27272a]'}`}>
+                  {m.role === 'user' ? (user?.user_metadata?.avatar_url ? <img src={user.user_metadata.avatar_url} className="w-full h-full object-cover" alt="User" /> : <div className="text-xs">U</div>) : <Sparkles className="w-4 h-4 text-blue-400" />}
                 </div>
-                <div className={`max-w-[85%] \${m.role === 'user' ? 'bg-blue-600/20 text-blue-50' : 'bg-transparent text-zinc-300'} px-5 py-3 rounded-2xl prose prose-invert prose-p:leading-relaxed prose-pre:bg-[#18181b] prose-pre:border prose-pre:border-white/10`}>
-                  
+                <div className={`max-w-[85%] ${m.role === 'user' ? 'bg-blue-600/20 text-blue-50' : 'bg-transparent text-zinc-300'} px-5 py-3 rounded-2xl prose prose-invert prose-p:leading-relaxed prose-pre:bg-[#18181b] prose-pre:border prose-pre:border-white/10`}>
                   <ReactMarkdown>{m.content}</ReactMarkdown>
                 </div>
               </motion.div>
@@ -226,19 +254,18 @@ export default function Home() {
           <div ref={messagesEndRef} />
         </div>
 
-        
         <div className="p-4 bg-gradient-to-t from-[#09090b] to-transparent">
           <form onSubmit={mySubmit} className="relative max-w-3xl mx-auto flex items-end gap-2 bg-[#18181b] p-2 rounded-2xl border border-white/10 shadow-2xl focus-within:border-white/20 transition-all">
             <button 
               type="button" 
               onClick={handleVoice}
-              className={`p-3 rounded-xl transition-colors \${isRecording ? 'bg-red-500/20 text-red-400 animate-pulse' : 'hover:bg-white/5 text-zinc-400'}`}
+              className={`p-3 rounded-xl transition-colors cursor-pointer ${isRecording ? 'bg-red-500/20 text-red-400 animate-pulse' : 'hover:bg-white/5 text-zinc-400'}`}
             >
               <Mic className="w-5 h-5" />
             </button>
             <textarea
               className="w-full bg-transparent p-3 text-zinc-100 placeholder:text-zinc-500 resize-none outline-none max-h-32 min-h-[44px]"
-              value={input}
+              value={chatInput}
               onChange={handleInputChange}
               placeholder="Ask Aura to build something incredible..."
               rows={1}
@@ -250,11 +277,11 @@ export default function Home() {
               }}
             />
             {isLoading ? (
-              <button type="button" onClick={stop} className="p-3 bg-white/10 hover:bg-white/20 rounded-xl text-white transition-colors">
+              <button type="button" onClick={stop} className="p-3 bg-white/10 hover:bg-white/20 rounded-xl text-white transition-colors cursor-pointer">
                 <Square className="w-5 h-5 fill-current" />
               </button>
             ) : (
-              <button type="submit" disabled={!input.trim()} className="p-3 bg-white hover:bg-zinc-200 disabled:opacity-50 disabled:hover:bg-white text-black rounded-xl transition-colors">
+              <button type="submit" disabled={!chatInput.trim()} className="p-3 bg-white hover:bg-zinc-200 disabled:opacity-50 disabled:hover:bg-white text-black rounded-xl transition-colors cursor-pointer">
                 <Send className="w-5 h-5" />
               </button>
             )}
@@ -262,7 +289,6 @@ export default function Home() {
         </div>
       </div>
 
-      
       <AnimatePresence>
         {activeCode && (
           <motion.div 
@@ -277,11 +303,11 @@ export default function Home() {
                 <span className="text-sm font-medium text-zinc-300">Live Preview</span>
               </div>
               <div className="flex items-center gap-3">
-                <button onClick={downloadCode} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-medium text-zinc-300 transition-colors">
+                <button onClick={downloadCode} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-medium text-zinc-300 transition-colors cursor-pointer">
                   <Download className="w-3.5 h-3.5" />
                   Download
                 </button>
-                <button onClick={() => setActiveCode(null)} className="text-xs text-zinc-500 hover:text-white transition-colors">Close</button>
+                <button onClick={() => setActiveCode(null)} className="text-xs text-zinc-500 hover:text-white transition-colors cursor-pointer">Close</button>
               </div>
             </div>
             <div className="flex-1 w-full overflow-hidden">
