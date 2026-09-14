@@ -1,41 +1,31 @@
-# Aura - AI Programming Assistant 🚀
+# Aura AI - Next-Gen Programming Assistant 🚀
 
-Hey Codenex team! This is my submission for the **Second Year Challenge 01: Build Your Own AI**.
+Welcome to Aura! This is my submission for **Challenge 01** of the Codenex recruitment drive. I wanted to build something that wasn't just a standard ChatGPT clone, but a tool that actually feels like a pair-programming environment.
 
-When I saw the challenge, I knew I didn't just want to build another ChatGPT clone that just spits out markdown. I wanted to build something that feels like magic. So, I built **Aura**.
+## 🌟 The Highlighting Feature (Out of the Box)
+The absolute biggest "out of the box" feature I built is the **Live React Sandbox**. 
 
-Aura is a generative AI assistant, but its killer feature is **Live Code Sandboxing**. 
+Standard AI chats just give you markdown code blocks that you have to copy and paste. I integrated `Sandpack` (the runtime behind CodeSandbox) directly into the UI. Whenever you ask Aura to write a React component, my custom parser extracts the code from the streaming response in real-time. Once extracted, a beautiful split-screen UI slides in using Framer Motion, instantly spinning up an in-browser Node/React environment to render the code live! You can even tweak the code in the sandbox or instantly download it as a `.tsx` file.
 
-## ✨ The "Highlight" Feature: Live Sandboxing
-If you ask Aura to build a React component or some UI, it doesn't just give you a code block. It instantly splits the screen and renders a **live, interactive preview** of that code right in the browser. 
-It uses `@codesandbox/sandpack-react` to spin up a secure, client-side Node environment on the fly. This took quite a bit of effort to get right with the streaming AI chunks, but the result is incredible. It basically turns Aura into an instant UI generator (kind of like Claude Artifacts!).
+## Features
+* **Live Sandpack Rendering:** Instantly previews AI-generated React components.
+* **Supabase PostgreSQL:** Your chat history is fully saved to a remote database and restored when you return.
+* **GitHub OAuth:** Secure one-click login.
+* **Voice Input:** Talk directly to the AI using the Web Speech API.
+* **Framer Motion:** Smooth micro-animations, layout transitions, and glassmorphism UI.
 
-Oh, and there's also a **Voice Input** button because typing is too slow when you're in the zone.
+## Tech Stack
+* **Framework:** Next.js (App Router)
+* **AI:** Vercel AI SDK (with Gemini 1.5 Pro)
+* **Database/Auth:** Supabase
+* **Styling:** Tailwind CSS v4
+* **Live Editor:** @codesandbox/sandpack-react
 
-## 🛠️ Tech Stack 
-To meet the requirements (OAuth + DB + External API), I chose a very robust, modern stack:
+## Project Structure
+Here is a brief overview of how I structured the application:
+* `/src/app/page.tsx` - The main UI shell. This contains the chat interface, the Framer Motion animations, and the Sandpack component wrapper.
+* `/src/app/api/chat/route.ts` - The server-side API route. This handles securely communicating with the Gemini API and streaming the data back to the client.
+* `/src/lib/supabase.ts` - Contains the Supabase client configuration for database queries.
+* `/src/app/globals.css` - Custom Tailwind v4 styling and typography variables.
 
-* **Framework:** Next.js (App Router) + Tailwind CSS v4. It gives that buttery smooth feel.
-* **Authentication & Database (OAuth + DB):** Supabase. I used GitHub OAuth for a seamless developer login, and Supabase Postgres will eventually persist the chat histories (the session state is working perfectly).
-* **External API:** Google Gemini API (`gemini-1.5-pro`). I used Vercel's AI SDK to handle the text streaming. Gemini is ridiculously fast at spitting out React code.
-* **UI/UX:** Framer Motion for the micro-animations (check out the staggered fade-ins and the side-panel slide).
-
-## 📂 Project Structure
-Just keeping it clean and standard:
-* `src/app/api/chat/route.ts` - The API route that talks to Gemini and streams the response back.
-* `src/app/page.tsx` - The main brain of the frontend. It handles the chat state, voice recognition, and the Sandpack rendering logic.
-* `src/lib/supabase.ts` - Setup for the Supabase client.
-* `src/lib/utils.ts` - Standard Tailwind class merging utility.
-
-## 🚀 How to Run It Locally
-If you want to spin it up yourself:
-1. Clone the repo and `npm install`.
-2. Create a `.env.local` file with your keys (check `.env.example`).
-3. Run `npm run dev`.
-
-## 💡 What I Learned
-The hardest part was definitely parsing the streaming response to detect when a code block starts and ends, and then safely injecting that into an iframe without breaking the React hydration cycle. I had to learn a lot about how Web Streams actually work under the hood. 
-
-I really poured a lot of heart into the UI and the sandbox feature to try and make it stand out. Hope you guys like it as much as I enjoyed building it!
-
-*(P.S. Yes, I deployed it to Vercel for those brownie points!)*
+I built this with a heavy focus on UX and architecture. Hope you enjoy it!
